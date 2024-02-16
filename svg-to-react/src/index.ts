@@ -1,4 +1,4 @@
-import { Supernova, PulsarContext, RemoteVersionIdentifier, AnyOutputFile, AssetFormat, RenderedAsset } from "@supernovaio/sdk-exporters"
+import { Supernova, PulsarContext, RemoteVersionIdentifier, AnyOutputFile, AssetFormat, RenderedAsset, Asset } from "@supernovaio/sdk-exporters"
 import { ExporterConfiguration } from "../config"
 import { convertRenderedAssetsToComponentsInBatches, convertRenderedAssetsToOriginalSVG, convertRenderedAssetsToIndexFile } from "./files"
 import { isPathFilteredOut } from "./paths"
@@ -37,27 +37,28 @@ Pulsar.export(async (sdk: Supernova, context: PulsarContext): Promise<Array<AnyO
     assets = assets.filter((asset) => asset?.brandId === brand?.id)
   }
 
-  // Render all assets in the library
-  let renderedAssets = await sdk.assets.getRenderedAssets(
-    remoteVersionIdentifier,
-    assets,
-    assetGroups,
-    AssetFormat.svg,
-    exportConfiguration.svgScale
-  )
+  // DO NOT Render all assets in the library
+  let renderedAssets = assets;
+  // await sdk.assets.getRenderedAssets(
+  //   remoteVersionIdentifier,
+  //   assets,
+  //   assetGroups,
+  //   AssetFormat.svg,
+  //   exportConfiguration.svgScale
+  // )
 
   let resultingFiles: Array<AnyOutputFile> = []
 
   // Filter out assets that don't belong to the selected platform
-  if (exportConfiguration.ignoredAssetPaths.length > 0) {
-    renderedAssets = renderedAssets.filter(
-      (a) => !isPathFilteredOut(exportConfiguration.ignoredAssetPaths, [...a.group.path, a.group.name])
-    )
-  }
+  // if (exportConfiguration.ignoredAssetPaths.length > 0) {
+  //   renderedAssets = renderedAssets.filter(
+  //     (a) => !isPathFilteredOut(exportConfiguration.ignoredAssetPaths, [...a.group.path, a.group.name])
+  //   )
+  // }
 
   // Filter for Icons
   const icons = renderedAssets.map((asset) => {
-    if (asset.originalName.includes('Icons')) {
+    if (asset.origin?.name?.includes('Icons')) {
       return asset
     }
   })
@@ -78,9 +79,9 @@ Pulsar.export(async (sdk: Supernova, context: PulsarContext): Promise<Array<AnyO
 
   const indexFileMap = {}
 
-  icons?.forEach((icon: RenderedAsset) => {
-    if (icon?.sourceUrl) {
-      const originName = icon?.originalName?.split('/') || []
+  icons?.forEach((icon: Asset) => {
+    if (icon?.svgUrl) {
+      const originName = icon?.origin?.name?.split('/') || []
       const pathname = originName
         .map((name, index) => {
           if (index === 0 || index === originName.length - 1) {
@@ -93,7 +94,7 @@ Pulsar.export(async (sdk: Supernova, context: PulsarContext): Promise<Array<AnyO
         .replaceAll(' ', '')
         .replaceAll('-', '')
 
-      const iconName = icon?.fileName
+      const iconName = icon?.name
         .replaceAll('-', '')
         .replaceAll(' ', '')
         .replaceAll('&', 'And')
@@ -106,7 +107,7 @@ Pulsar.export(async (sdk: Supernova, context: PulsarContext): Promise<Array<AnyO
       iconsFileOptionsArray.push({
         relativePath: `./svgs/${pathname}`,
         fileName: SVGFileName,
-        url: icon?.sourceUrl,
+        url: icon?.svgUrl,
       })
 
       // Build TSX Files
